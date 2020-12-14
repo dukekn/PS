@@ -9,11 +9,7 @@ class TransactionHandler
     private array $currency_rates = ['EUR' => [
         ['pair' => 'USD', 'rate' => '1.1497'],
         ['pair' => 'JPY', 'rate' => '129.53']
-    ],
-        'USD' => [
-            ['pair' => 'EUR', 'rate' => '1.1497'],
-            ['pair' => 'JPY', 'rate' => '129.53']
-        ]];  // currency rates
+    ]];  // currency rates
 
     private array $transaction_rules = [
         'cash_in' => ['fee_default' => '0.03', 'max_fee' => '5'],
@@ -35,17 +31,15 @@ class TransactionHandler
         }
     }
 
-    public
-    function getTransactionFee(array $weekly_transactions)
+    public function getTransactionFee(array $weekly_transactions)
     {
-
         foreach ($weekly_transactions as $users) {
             foreach ($users as $transactions) {
                 $this->counter = 0;
                 $this->transactions_total = 0;
                 $this->threshold_passed = false;
-//                print("<pre>".print_r($transactions,true)."</pre>");
-                foreach ($transactions as  $key => $transaction) {
+
+                foreach ($transactions as $key => $transaction) {
                     $t_action = $transaction['action'];
 
                     if ($t_action == 'cash_in' && (array_key_exists($t_action, $this->transaction_rules))) {
@@ -62,10 +56,30 @@ class TransactionHandler
 
     }
 
+    private function getWeeklyCashIn(array $transaction)
+    {
+
+        $commision_terms = $this->transaction_rules['cash_in'];
+        $fee_default_percent = floatval($commision_terms['fee_default'] / 100) ?? null; // @var % - default fee
+        $max_fee = floatval($commision_terms['max_fee']) ?? null; //@var int - max fee per transaction in EUR
+
+        $t_date = $transaction['date'];
+        $u_id = $transaction['u_id'];
+        $t_type = $transaction['type'];
+        $t_action = $transaction['action'];
+        $t_amount = $transaction['amount'];
+        $t_currency = $transaction['currency'];
+        $t_eur_eq = floatval($transaction['eur_equivalent']);
+        $fee_eur = $t_eur_eq * $fee_default_percent;
+        $fee_eur = ($fee_eur <= $max_fee) ? $fee_eur : $max_fee;
+
+        $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
+
+        print("<pre>" . print_r($t_date . ':  |  ' . $u_id . '  |  ' . $t_type . ' |  ' . $t_action . '  |  ' . $t_amount . $t_currency . '   ---> Fee: ' . number_format($fee, 2), true) . "</pre>");
+    }
 
     public function exchange(float $amount, string $currency_from, string $currency_to = 'EUR'): float
     {
-
         if (array_key_exists($currency_to, $this->currency_rates)) {
             foreach ($this->currency_rates[$currency_to] as $currency_rate) {
                 if ($currency_rate['pair'] == $currency_from) {
@@ -88,31 +102,9 @@ class TransactionHandler
         }
     }
 
-    private function getWeeklyCashIn(array $transaction)
-    {
-
-        $commision_terms = $this->transaction_rules['cash_in'];
-        $fee_default_percent = floatval($commision_terms['fee_default'] / 100) ?? null; // @var % - default fee
-        $max_fee = floatval($commision_terms['max_fee']) ?? null; //@var int - max fee per transaction in EUR
-
-                $t_date = $transaction['date'];
-                $u_id = $transaction['u_id'];
-                $t_type = $transaction['type'];
-                $t_action = $transaction['action'];
-                $t_amount = $transaction['amount'];
-                $t_currency = $transaction['currency'];
-                $t_eur_eq = floatval($transaction['eur_equivalent']);
-                $fee_eur = $t_eur_eq * $fee_default_percent;
-                $fee_eur = ($fee_eur <= $max_fee) ? $fee_eur : $max_fee;
-
-                $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
-
-                print("<pre>" . print_r($t_date.':  |  '.$u_id.'  |  '.$t_type.' |  '.$t_action.'  |  '.$t_amount .$t_currency.'   ---> Fee: '.number_format($fee , 2), true) . "</pre>");
-    }
-
     private function getWeeklyCashOut(array $transaction)
     {
-        $this->counter  ++;
+        $this->counter++;
         $commision_terms = $this->transaction_rules['cash_out'];
 
         // natural transaction params
@@ -124,55 +116,52 @@ class TransactionHandler
         $l_fee_default_percent = floatval($commision_terms["legal"]['fee_default'] / 100); // @var % - default fee
         $l_min_fee = floatval($commision_terms["legal"]['min_fee']); //@var int - max fee per transaction in EUR
 
-            $transactions_no_fee = $n_no_fee_week_threshold;
-//        print("<pre>".print_r($transactions,true)."</pre>");
+        $transactions_no_fee = $n_no_fee_week_threshold;
 
+        $t_date = $transaction['date'];
+        $u_id = $transaction['u_id'];
+        $t_type = $transaction['type'];
+        $t_action = $transaction['action'];
+        $t_amount = $transaction['amount'];
+        $t_currency = $transaction['currency'];
+        $u_type = $transaction['type'];
+        $t_eur_eq = floatval($transaction['eur_equivalent']);
 
-                $t_date = $transaction['date'];
-                $u_id = $transaction['u_id'];
-                $t_type = $transaction['type'];
-                $t_action = $transaction['action'];
-                $t_amount = $transaction['amount'];
-                $t_currency = $transaction['currency'];
-                $u_type = $transaction['type'];
-                $t_eur_eq = floatval($transaction['eur_equivalent']);
+        $this->transactions_total += $t_eur_eq;
+        $transactions_no_fee -= $t_eur_eq;
 
-                $this->transactions_total +=$t_eur_eq;
-                $transactions_no_fee -= $t_eur_eq;
+        if ($u_type == 'legal') {
+            $fee_eur = $t_eur_eq * $l_fee_default_percent;
+            $fee_eur =  ($fee_eur < $l_min_fee)? $l_min_fee : $fee_eur;
+            $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
+        }
 
-                if ($u_type == 'legal') {
-                    $fee_eur = $t_eur_eq * $l_fee_default_percent;
+        if ($u_type == 'natural') {
+
+            if ($this->counter > $n_no_fee_transactions) {
+                $fee_eur = $t_eur_eq * $n_fee_default_percent;
+                $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
+
+            } else {
+                //if not passed the threshold
+                if (!$this->threshold_passed) {
+
+                    if ($this->transactions_total <= $n_no_fee_week_threshold) {
+                        $fee = 0.00;
+                    } else {
+                        $this->threshold_passed = true;
+                        $fee_eur = abs($transactions_no_fee) * $n_fee_default_percent;
+                        $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
+                    }
+                } else {
+                    //has passed threshold
+                    $fee_eur = $t_eur_eq * $n_fee_default_percent;
                     $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
                 }
+            }
+        }
 
-                if ($u_type == 'natural') {
-
-                    if ($this->counter > $n_no_fee_transactions) {
-                        $fee_eur = $t_eur_eq * $n_fee_default_percent;
-                        $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
-
-                    } else {
-                        //if not passed the threshold
-
-                        if (!$this->threshold_passed) {
-
-//                            var_dump($this->transactions_total <= $n_no_fee_week_threshold);
-                            if ($this->transactions_total <= $n_no_fee_week_threshold) {
-                                $fee = 0.00;
-                            } else {
-                                $this->threshold_passed = true;
-                                $fee_eur = abs($transactions_no_fee) * $n_fee_default_percent;
-                                $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
-                            }
-                        } else {
-                            //has passed threshold
-                            $fee_eur = $t_eur_eq * $n_fee_default_percent;
-                            $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
-                        }
-                    }
-                }
-
-                print("<pre>" . print_r($t_date . ':  |  ' . $u_id . '  |  ' . $t_type . ' |  ' . $t_action . '  |  '.$t_eur_eq.'EUR   |   ' . $t_amount . $t_currency . '   ---> Fee: ' . number_format($fee, 2), true) . "</pre>");
+        print("<pre>" . print_r($t_date . ':  |  ' . $u_id . '  |  ' . $t_type . ' |  ' . $t_action . '  |  ' . $t_eur_eq . 'EUR   |   ' . $t_amount . $t_currency . '   ---> Fee: ' . number_format($fee, 2), true) . "</pre>");
 
     }
 
