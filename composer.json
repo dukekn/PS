@@ -1,6 +1,6 @@
 {
-    "name": "paysera/commission-task-skeleton",
-    "description": "Skeleton for Paysera recruitment task",
+    "name": "ps task",
+    "description": "Skeleton recruitment task",
     "keywords": [],
     "type": "project",
     "autoload": {
