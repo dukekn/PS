@@ -6,7 +6,7 @@ http://localhost/src/index.php
 Input file is located in: 
 \\src\input\input.csv
 
-Outpts in the browser
+*Outpts in the browser*
 
 
 Example Input from file:
