@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Ps\CommissionTask\Main;
 
-
 class TransactionHandler
 {
     private array $currency_rates = ['EUR' => [
@@ -80,6 +79,7 @@ class TransactionHandler
 
     public function exchange(float $amount, string $currency_from, string $currency_to = 'EUR'): float
     {
+        //if currency exist as main
         if (array_key_exists($currency_to, $this->currency_rates)) {
             foreach ($this->currency_rates[$currency_to] as $currency_rate) {
                 if ($currency_rate['pair'] == $currency_from) {
@@ -87,6 +87,7 @@ class TransactionHandler
                 }
             }
         } else {
+            //try to find as pair
             foreach (array_values($this->currency_rates) as $key => $currency_pair) {
                 $rate_from = $this->currency_rates[array_keys($this->currency_rates)[$key]];
 
@@ -132,7 +133,7 @@ class TransactionHandler
 
         if ($u_type == 'legal') {
             $fee_eur = $t_eur_eq * $l_fee_default_percent;
-            $fee_eur =  ($fee_eur < $l_min_fee)? $l_min_fee : $fee_eur;
+            $fee_eur = ($fee_eur < $l_min_fee) ? $l_min_fee : $fee_eur;
             $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
         }
 
@@ -145,16 +146,17 @@ class TransactionHandler
             } else {
                 //if not passed the threshold
                 if (!$this->threshold_passed) {
-
+                    //&& weekly user total <= max free weekly threshold
                     if ($this->transactions_total <= $n_no_fee_week_threshold) {
                         $fee = 0.00;
                     } else {
+                        // threshold passed
                         $this->threshold_passed = true;
                         $fee_eur = abs($transactions_no_fee) * $n_fee_default_percent;
                         $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
                     }
                 } else {
-                    //has passed threshold
+                    // threshold passed
                     $fee_eur = $t_eur_eq * $n_fee_default_percent;
                     $fee = ($t_currency == 'EUR') ? $fee_eur : $this->exchange($fee_eur, 'EUR', $t_currency);
                 }

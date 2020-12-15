@@ -11,8 +11,8 @@ class Broker
     {
         // @set array  $weekly_transact
         $this->getWeeklyTransactions($weekly);
+        // get transactions fees
         $this->getTransactionFee();
-
     }
 
     private function getWeeklyTransactions(array $weekly): void
@@ -22,10 +22,9 @@ class Broker
             array_push($weekly_tr, $user_transactions);
         }
         $this->weekly_transact = $weekly_tr;
-
     }
 
-    private function getTransactionFee()
+    private function getTransactionFee():void
     {
         $t_handler = new TransactionHandler();
 
