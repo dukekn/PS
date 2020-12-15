@@ -1,15 +1,15 @@
 # Ps Commission task skeleton
 
-Example execution:
+**Example execution:**
 http://localhost/src/index.php
 
-Input file is located in: 
+**Input file is located in: **
 \\src\input\input.csv
 
-*Outpts in the browser*
+Outpts in the browser
 
 
-Example Input from file:
+**Example Input from file:**
 2014-12-31,4,natural,cash_out,1200.00,EUR
 
 2015-01-01,4,natural,cash_out,1000.00,EUR
@@ -38,7 +38,7 @@ Example Input from file:
 
 
 
-Expected Output:
+**Expected Output:**
 
 2014-12-31:  |  4  |  natural |  cash_out  |  1200EUR   |   1200.00EUR   ---> Fee: 0.60
 
